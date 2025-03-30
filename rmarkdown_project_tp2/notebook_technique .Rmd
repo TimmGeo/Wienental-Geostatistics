@@ -1,0 +1,561 @@
+---
+title: "Notebook technique de l'étude térritorial TP2"
+author: "Timm Rogenmoser"
+date: "12/8/2022"
+output:
+   html_document:
+    theme: yeti
+    highlight: default
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### Table des matières
+
+- **[1. Réglages de base et préparation des calculs ultérieurs]**
+- **[2. Régression logistique multinomiale]**
+- **[3. Analyse en composants principales (ACP)]**
+- **[4. Clustering]** 
+
+### 1. Réglages de base et préparation des calculs ultérieurs  
+
+#### 1.1 Chargement des packages nécessaires 
+
+Tout d'abord, le package *ggplot2* nécessaire pour les calculs sont chargé **dans le library** (le répertoire où les packages sont stockés):
+
+```{r}
+library(ggplot2)
+```
+
+```{r}
+path = getwd()
+setwd(path)
+```
+
+### 2. Régression logistique multinomiale 
+
+#### 2.1 Introcuction théorique 
+
+Le principe de la régression logistique multinomiale est d'expliquer ou de prédire une variable qui peut prendre J valeurs alternatives (les J modalités de la variable) en fonction de variables explicatives. 
+
+#### 2.2 Procédure de calcul
+
+Charger package nnet; Nnet est une bibliothèque de réseaux neuronaux artificiels (Artificial Neural Network ANN). La raison pour laquelle cette librairie est utilisée dans la régression logistique est qu'elle peut être considérée comme un cas particulier simple de réseau neuronal, la fonction multinom permettant automatiquement de construire un réseau neuronal en interne. 
+
+```{r}
+library(nnet)
+```
+
+Ensuite, on charge les données nécessaires (qui sont sauvgardé en fichier .csv) pour les calcules avec la fonction **read_csv()** et on donne un nom au fichier, ce qui va faciliter les calcules par la suite. 
+
+Cette fonction **read_csv()** permet d'ouvrir les données en fonction du chemin d'accès. 
+
+Données de la région Wynental(Canton de Argovie):
+```{r}
+d=
+read.csv(file="../donnees/Etappe 1/donnees_wynental_tp2.csv", sep="\t")
+```
+Les variables suivantes se trouvent dans le fichier... également avec une explication de leurs abbréviations: 
+
+- _TYPE_: Typologie de la commune définie par l'Office fédéral de la topographie en 2012
+- _SAU_: Proportion de la surface agricole utile (en hectar) par rapport à la surface totale de la commune (en hectar)
+- _EPT1_: Proportion des emplois du secteur primaire par rapport au total des emplois dans la commune
+- _SURFHAB_: Proportion de la surface des batiments d'habitat (ha) par rapport au total de la surface de la commune (ha)
+- _RESSEC_: Proportion des résidents secondaires par rapport à tout les types des batiments dans la commune 
+
+Pour regarder de plus près la variable dépendante:
+```{r}
+table(d$typologie_ofs_court)
+```
+
+
+Dans le chunk suivant je crée deux jeux de données dont j'aurai besoin plus tard pour la création du modèle. En effet, à partir du jeux de données initial, il est possible de créer, avec les fonctions suivantes, des données de calibrage (training data), ainsi qu'un jeu de données de test pour la validation. La première contient 90% (dtrain) des données et la seconde 10% (dtest). 
+
+Nous exécutons d'abord le modèle de régression sur le jeu de données (données d'entraînement= dtrain), puis nous l'appliquons au dtest pour évaluer son efficacité. Les deux jeux de données prennent les données au hasard dans le jeu de données de base. L'objectif est alors que le modèle fasse à chaque fois des prédictions sur des données différentes, ce qui rend plus facile l'évaluation de sa capacité de prédiction.
+
+```{r}
+idx = sample(nrow(d), size=0.9*nrow(d))
+dtrain = d[idx,]
+dtest = d[-idx,]
+```
+
+
+Il est maintenant possible de calculer la régression multinomiale à l'aide de la fonction multinom (l'utilité de multinom est expliqué plus en haut à l'installation du package "nnet".
+```{r}
+regmlogit = multinom(TYPE ~ SAU + EPT1 + SURFHAB + RESSEC,
+                     data=dtrain)
+```
+et puis afficher l'information sur les coefficients, la déviance (qui est de 1.6) et l'AIC (qui est 21.6):
+
+```{r}
+summary(regmlogit)
+```
+Nous avons en fait deux modèles différents, un pour chacune des catégories, sauf pour une catégorie. Cela est dû au fait que nous estimons des probabilités pour chaque catégorie et que la somme des probabilités doit être égale à 1. Ainsi, si nous avons calculé la probabilité pour deux catégories, nous pouvons calculer la probabilité pour la dernière catégorie par un simple calcul.
+
+Pour l'évaluation, nous pouvons faire un tableau comparatif simple entre les catégories prédites et les catégories effectives pour le jeu de données de calibrage et celui de test:
+
+```{r}
+table(predict(regmlogit, newdata=dtrain),
+      dtrain$TYPE)
+```
+
+```{r}
+table(predict(regmlogit, newdata=dtest),
+      dtest$TYPE)
+```
+Et nous pouvons calculer la proportion de régions classées correctement, pour les deux jeux de données:
+```{r}
+accuracy_train = sum(predict(regmlogit, newdata=dtrain) == dtrain$TYPE) / nrow(dtrain)
+accuracy_test = sum(predict(regmlogit, newdata=dtest) == dtest$TYPE) / nrow(dtest)
+```
+
+```{r}
+accuracy_train
+accuracy_test
+```
+Nous avons donc 100% de réponses justes pour les données de calibration, et environ 66% pour la validation. C'est ce dernier chiffre qui représente au mieux la qualité du modèle. Notre modèle est donc au mieux médiocre...
+
+Comme une régression nécessite toujours une certaine quantité de données pour être fiable, on va faire un boucle qui repéte les étapes précedents 100 fois. Chaque fois, la précision du modèle sera légèrement différente en raison de la séparation aléatoire de l'ensemble des données. 
+
+```{r include=FALSE}
+accuracy_train_d=c()
+accuracy_test_d=c()
+
+for (i in 1:100) {
+ idx = sample(nrow(d), size=0.9*nrow(d))
+ dtrain= d[idx,]
+ dtest= d[-idx,]
+ 
+ #Nous pouvons maintenant calculer la régression logistique multinomiale
+ #N.B: La variable "RESSEC" a été supprimée ici pour forcer une matrice de confusion avec des erreurs. Sans la suppression de cette variable, la matrice aurait été sans erreur et donc la génération ultérieure d'une "carte d'erreur" aurait été absurde... 
+ 
+ regmlogit=multinom(TYPE ~ SAU + EPT1 + SURFHAB ,
+                     data=dtrain) 
+ 
+ # On peut ensuite afficher l'information sur les coefficients, la déviance et l'AIC, comme déjà pour la régression logistique binomiale
+ 
+ summary(regmlogit)
+ 
+ table(predict(regmlogit, newdata=dtrain),
+      dtrain$TYPE)
+ table(predict(regmlogit, newdata=dtest),
+      dtest$TYPE)
+ 
+accuracy_train = sum(predict(regmlogit, newdata=dtrain) == dtrain$TYPE) / nrow(dtrain)
+accuracy_test = sum(predict(regmlogit, newdata=dtest) == dtest$TYPE) / nrow(dtest)
+
+accuracy_train_d = c(accuracy_train_d, accuracy_train)
+accuracy_test_d = c(accuracy_test_d, accuracy_test)
+ 
+ 
+}
+```
+
+Sur la base des 100 valeurs de précision ou plus, nous calculons la moyenne et la variance. La moyenne donne une estimation relativement fiable de la qualité de notre modèle. La variance indique la variabilité et donc la sensibilité due à la taille de l'échantillon utilisé. 
+
+Avec un moyenne de 86% le modèle n'est pas parfait et fiable à 100% mais est suffisant pour ce travail.Les valeurs des dispersions (variances) sont relativement faibles, avec 0,0004 % et 0,03 %. Bien entendu, ces valeurs pourraient être encore plus faibles dans un modèle idéal, mais nous les considérons comme "suffisamment faibles" pour ce travail), et le modèle peut donc être considéré comme "fiable". 
+
+```{r}
+mean(accuracy_train_d)
+mean(accuracy_test_d)
+
+var(accuracy_train_d)
+var(accuracy_test_d)
+```
+```{r}
+ table(predict(regmlogit, newdata=dtrain),
+      dtrain$TYPE)
+ table(predict(regmlogit, newdata=dtest),
+      dtest$TYPE)
+ 
+```
+Enfin, on calcule la régression linéaire sur toutes les données 
+
+```{r include=FALSE}
+donnees_regmlogit = multinom(TYPE ~ SAU + EPT1 + SURFHAB , 
+                     data=d)
+```
+
+```{r}
+table(predict(donnees_regmlogit, newdata=d),
+      d$TYPE)
+```
+Rematique: On peut constater que la suppression de la variable "RESSEC" a contribué à la génération d'une erreur souhaitée.  Il est possible que cette erreur aurait pu être générée sans la suppression de la variable "RESSEC", à savoir en ajoutant plus de communes à la région de départ. Avec 25 communes, la région de Wynental est relativement petite et la probabilité qu'une erreur soit générée dans la matrice de confusion serait plus grande avec XY communes supplémentaires.
+
+Création d'un vecteur avec prédiction de modèle 
+
+```{r}
+vector_prediction = predict(regmlogit,newdata = d)
+```
+
+La fonction **write.table** permet d'exporter le vecteur sous forme de colonnes pour ensuite vérifier les prédictions dans excel et afficher les erreurs. Avec **col.names** il est possible d'ajouter un titre au colonne et avec **sep**, les values peuvent etre separé avec des ";". 
+
+```{r}
+write.table(vector_prediction,"colonne_prediction.csv",sep = ";", col.names = "Prediction")
+```
+
+
+### 3. Analyse en composants principales (ACP)
+
+#### Introduction théorique
+L'analyse en composantes principales (ACP) est un outil de compression et de synthèse de l'information, très utile lorsqu'il faut traiter et interpréter une grande somme de données quantitatives (Openeditions, 2018). **L'objectif de l'ACP est de revenir à un espace de dimension réduite en déformant le moins possible la réalité**. Il s'agit donc d'obtenir un **résumé le plus pertinent possible** des données initiales (Wikistat, 2021).
+
+
+#### Préparation du jeu de données 
+
+Premièrement, on charge les données nécessaires (qui sont sauvgardé en fichier .csv) pour les calcules avec la fonction **read_csv()** et on donne un nom au fichier, ce qui va faciliter les calcules par la suite. 
+
+Cette fonction **read_csv()** permet d'ouvrir les données en fonction du chemin d'accès. 
+
+Données de la région Wynental(Canton de Argovie):
+```{r}
+d2 = read.csv(file="../donnees/Etappe 2/acp_donnees_5.csv", sep="\t")
+```
+
+Après avoir importer les données, on peut afficher les premières lignes du tableau pour des fins de vérification. Pour cela on utilise la fonction **head()** et on paranthèse on précise la nombre de lignes souhaitée dans l'affichage:
+
+```{r}
+head(d2, 3)
+```
+
+Pour vérifier le nombre de colonnes on utilise la fonction **ncol()**
+```{r}
+ncol(d2)
+```
+
+Nous pouvons maintenant extraire toutes les variables numériques que nous utiliserons dans l'ACP (colonnes 2 à 6). Nous ne tenons pas compte des noms des communes (colonne 1). 
+N.B : D'autres colonnes (ADO et les différentes initiatives populaires (IP_XY)) ont également été supprimées pour le calcul de l'ACP. En effet, l'inclusion de ces colonnes rendait l'ACP moins qualitative (c'est-à-dire que les variables n'expliquaient que 39% de la première dimension). Grâce à l'adaptation de l'ACP et à l'inclusion des colonnes 2 à 6, la première dimension est désormais expliquée à plus de 50% et est donc acceptable.
+
+```{r}
+d2_acp = d2[,2:6]
+```
+
+Le nouveau tableau réduit se présente maintenant comme suit et peut être affiché avec la fonction **head()** : 
+
+```{r}
+head(d2_acp, 3)
+```
+
+#### Explorer les données
+
+L'exploration des données permet de mieux connaitre les données. En particulier, les corrélations entre les différentes variables sont examinées ici. La raison en est que l'ACP est principalement utilisée pour réduire les dimensions (une dimension est une variable) --> c'est-à-dire pour limiter le nombre de variables afin que seules les deux ou trois premières composantes soient visibles. **Avoir un nombre limité de composantes aidera plus tard à l'interprétation, qui est listée dans l'autre notebook**.
+Dans ce sens, un ensemble de données se prête bien à une réduction de la dimensionnalité lorsque plusieurs variables sont corrélées entre elles, c'est-à-dire qu'elles représentent la même information.
+Nous allons donc extraire la matrice de corrélation et voir si plusieurs variables sont corrélées à plus de 0,5. Le fait que les corrélations soient plutôt élevées ou non dépend principalement du jeu de données.
+La fonction suivante permet d'afficher la matrice de corrélation (la première ligne n'est là que pour s'assurer que la matrice entière est affichée) :
+
+```{r}
+options(repr.matrix.max.rows=600, repr.matrix.max.cols=200)
+cor(d2_acp)
+```
+En observant le tableau généré, on constate qu'il y a toute une série de corrélations avec des valeurs supérieures à 0,5. Cependant, ces valeurs sont également mélangées avec d'autres variables qui ne sont que faiblement corrélées avec les autres. Le calcul suivant permet donc d'afficher les valeurs maximales et minimales des corrélations par colonne en éliminant la corrélation 1.0 de la diagonale : 
+
+```{r}
+cor_mat = cor(d2_acp)
+cor_mat[cor_mat == 1.0] = 0
+apply(cor_mat, 1, range)
+```
+
+#### Calcul de l'ACP
+
+Il existe différentes fonctions dans R qui permettent de calculer une ACP. Selon les recommandations du Workbook du professeur Kaiser, la fonction PCA du package "FactoMineR" est utilisée dans cette recherche. Celle-ci peut être chargée avec la fonction **library()** : 
+```{r}
+library(FactoMineR)
+```
+
+```{r}
+# install.packages(c('FactoMineR'))
+```
+
+```{r}
+# install.packages(c("factoextra", "ggpubr"))
+```
+
+Le package "Factoextra" est également chargé. La fonction **library()** est également utilisée à cet effet : 
+```{r}
+library("factoextra")
+```
+
+Les fonctions suivantes permettent de dessiner le graphique PCA des variables.
+**N.B. : La fonction **ncp** permet de définir le nombre de dimensions que l'on souhaite conserver, soit 5. Dans ce cas, nous nous limitons à 5. Il est également important de noter qu'une ACP est très sensible aux valeurs des données, c'est pourquoi il est très important de standardiser les données... ceci est possible grâce à la fonction **scale.unit=TRUE** : 
+
+```{r}
+d2_acp = d2[,2:6]
+acp = PCA(d2_acp, scale.unit=TRUE, ncp=5, graph=TRUE)
+```
+La fonction **get_eig()** permet d'afficher un premier résultat de l'ACP :
+```{r}
+get_eig(acp)
+```
+Si nécessaire, on peut réduire les résultats à un nombre souhaité à l'aide d'une parenthèse d'angle : 
+**N.B:** Les valeurs propres sont indiquées dans la colonne de gauche. La part de la variance expliquée montre l'importance de la composante (la part d'information saisie). La part cumulative de la variance expliquée est la somme de la variance expliquée de toutes les composantes qui sont plus importantes.
+
+```{r}
+get_eig(acp)[1:5,]
+```
+**N.B**: **Pour avoir une bonne ACP, il faut généralement viser une première composante qui explique au moins 50% de la variance, et les quatre premières composantes arrivent à 85% de variance expliquée.** 
+--> Pour cette raison, certains indicateurs qui sont trop indépendants (qui ont une faible corrélation avec d'autres variables), ou qui sont mal repris par les composantes ont étaient enlevées (comme expliqué plus en haut dans cette notebook!).
+
+On peut faire maintenant un graphique de type scree plot avec la variance expliquée et ne garder que les composantes jusqu'au coude (c-à-d jusqu'à 5 ici):
+```{r}
+plot(acp$eig[1:5,2], type="o", xlab="Composante", ylab="% variance expliquée")
+```
+Un représentation encore plus visuel peut etre fait avec le package factoextra: 
+```{r}
+fviz_screeplot(acp, addlabels = TRUE, ylim = c(0, 50)) 
+```
+
+#### Les socres factoriels 
+
+Les scores factoriels déterminent le lien entre les régions analysées et les composantes principales.
+Avec la fonction **plot.PCA()** ils est possible d'afficher un graphique des régions en fonction des composantes (ici les deux premières):
+```{r}
+plot.PCA(
+    acp, 
+    axes=c(1,2), 
+    title="Scores factoriels des deux premières composantes",
+    label="none",
+    col.ind="blue"
+)
+```
+Egalement il est possible d'afficher les scores factoriels avec la couleur qui indique la qualité de chaque région par rapport à la dimension:
+```{r}
+fviz_pca_ind(
+    acp,
+    col.ind="cos2", 
+    gradient.cols=c("#E7B800", "#FC4E07"),
+    geom="point"
+)
+```
+Les scores factoriels en tant que tel peuvent être affichés avec la fonction suivante:
+```{r}
+acp$ind$coord
+```
+Pour exporter ces données on utilise la fonction **write.csv()** (comme à la première étappe)
+```{r}
+write.csv(acp$ind$coord, file="scores-factoriels2.csv")
+```
+
+Ceci permet un traitement des données dans des logiciels de cartographie tels que QGIS ou logiciels de graphisme comme Illustrator.
+
+#### Communalités 
+
+Les communalités permettent de déterminer la contribution des différentes variables aux composantes principales. Nous pouvons ainsi afficher un graphique montrant la contribution des variables à deux composantes de notre choix (ici, les deux premières composantes (dimensions)) :
+```{r}
+plot.PCA(acp, axes=c(1,2), choix="var", title="Communalités")
+```
+Ou avec un peu de couleur pour indiquer la contribution de chaque variable:
+```{r}
+fviz_pca_var(
+    acp, 
+    col.var="contrib",
+    gradient.cols=c("#E7B800", "#FC4E07"),
+    repel=TRUE,    # Éviter la superposition de labels
+    title="Communalités",
+    axes=c(1,2)
+)
+```
+Pour afficher les communalités brutes on va utiliser la fonction suivante: 
+**N.B:** Dans le tableau on peut voir la corrélation entre les variables et les composantes, ce qui est important pour l'interprétation des différentes dimensions (interprétation est affiché dans l'autre notebook rmarkdown).
+```{r}
+acp$var$cor
+```
+C'est également intéressant et plus visuel de faire une graphique des contributions des différentes variables aux composantes:
+
+Cette **première dimension** est fortement représentée par les variables de la proportion des surfaces industrielles (SURFIND), les surfaces d'habitation (SURFHAB) ainsi que par la proportion des emplois du secteur primaire (EPT1).
+```{r}
+fviz_contrib(acp,
+             choice="var", axes=1, top=20,
+             title="Contribution des variables à la dimension 1")
+```
+
+Cette **deuxième dimension** est fortement représentée par la variable de la proportion des maisons secondaires (RESSEC) parmi tout type de maisons.
+```{r}
+fviz_contrib(acp,
+             choice="var", axes=2, top=20,
+             title="Contribution des variables à la dimension 2")
+```
+Cette **troixième dimension** est fortement représentée par la variable de la proportion des surfaces agricoles utiles (SAU).
+```{r}
+fviz_contrib(acp,
+             choice="var", axes=3, top=20,
+             title="Contribution des variables à la dimension 3")
+```
+Cette **quatrième dimension** est fortement représentée par la variable de la proportion des emplois dans le secteur primaire (EPT1). 
+```{r}
+fviz_contrib(acp,
+             choice="var", axes=4, top=20,
+             title="Contribution des variables à la dimension 4")
+```
+Finalement, la **cincquième dimension** est fortement représentée par la variable de la proportion des surfaces industrielles (SURFIND).
+```{r}
+fviz_contrib(acp,
+             choice="var", axes=5, top=20,
+             title="Contribution des variables à la dimension 5")
+```
+#### Représentation simultanée des variables et individus 
+
+Il est possible aussi de visualiser à la fois les variables et les régions (individus) dans le même graphique, sous forme d'un biplot:
+```{r}
+fviz_pca_biplot(
+    acp,
+    geom.ind="point",
+    geom.var=c("point", "text"),
+    addEllipses=TRUE
+)
+```
+
+
+### 4. Clustering
+
+#### Introduction théorique
+
+Le clustering est une méthode statistique qui **a comme but de grouper un ensemble d'individu ensemble de sorte que les individus dans le même groupe se ressemblent plus que les individus en dehors du groupe (Kaiser, 2022)**.
+
+Parmi les méthodes de clustering les plus populaires, on trouve le k-means et la classification hiérarchique (CAH).
+**N.B:** Dans cette recherche, uniquememnt la CAH est appliqué pour génerer le clustering et la carte des clusters
+
+
+#### La classification ascendante hiérarchique (CAH)
+
+Cette méthode consiste à établir ce que l'on appelle une hiérarchie de groupe, c'est-à-dire que tous les individus sont d'abord isolés, puis les individus qui se ressemblent le plus sont réunis en groupes. C'est ainsi que se forme le dendrogramme. Le dendrogramme est un bon moyen de visualiser les données et leurs structures. Il facilite également la détermination du nombre idéal de classes.
+
+La ACH nécessite deux choix importants:
+
+Le premier est celui de la mesure de la distance. La distance la plus commune est la distance euclidienne (bien évidamment, d'autres sont  possibles).
+
+Le deuxième choix est celui du critère de lien, qui définit comment la distance entre deux clusters (ensemble d'individus) est calculée (par exemple la distance maximale, moyenne etc.).
+
+**N.B:** Comme affiché ci-dessous, on utilise ici les memes données que dans l'étappe 2 (soit la génération de l'ACP), définis comme "d2": 
+```{r}
+# d2 = read.csv(file="../donnees/Etappe 2/acp_donnees_5.csv", sep="\t")
+```
+
+On séléctionne les variables qui sont inclues dans la CAH, soit la colonne 2 à 12 des données d2: 
+```{r}
+d_sel = d2[, 2:12]
+```
+
+Dans R, le calcul de la CAH se fait en deux étapes. D'abord nous calculons la matrice des distances avec la fonction **dist()**:
+```{r}
+dist = dist(d_sel, method="euclidean")
+```
+
+Et par la suite la CAH en utilisant ici le critère de Ward qui est basé sur la différence de variance si les deux clusters sont réunis:
+```{r}
+clus_cah = hclust(dist(d_sel), method="ward.D2")
+```
+
+La fonction **plot()** permet afficher l'histogramme . Nous n'affichons pas les labels, ce serait pas trop illisible...
+```{r}
+plot(clus_cah, hang=-0.1, ylab="Distance", xlab="Communes", main="Dendogramme des clusters")
+```
+Pour obtenir un certain nombre de classes, nous pouvons couper ce dendrogramme horizontalement. L'idéal dans le présent cas semble être 4 groupes. Le partionnement (clustering) peut être obtenu ainsi:
+```{r}
+cah_partitions = cutree(clus_cah, 4)
+cah_partitions
+```
+
+Pour analyser/interpréter plus tard les différents clusters dans le notebook_étude_territorial, j'effectue un boxplot pour les groupes/clusters: 
+```{r}
+cl_1 = d_sel[c(1,3,9,11,14,16,20),]
+cl_2 = d_sel[c(2,7,8,12,13,15,22,24),]
+cl_3 = d_sel[c(4,5,6,10,17,18,19,21,23),]
+cl_4 = d_sel[c(25),]
+```
+
+Boxplot des variables 
+```{r}
+#Comparaison SURFIND 
+par(mfrow=c(1,4))
+boxplot(cl_1$SURFIND, ylim=c(0,0.04), xlab="Cluster 1", ylab="[%]SURFIND")
+boxplot(cl_2$SURFIND, ylim=c(0,0.04), xlab="Cluster 2", ylab="[%]SURFIND")
+boxplot(cl_3$SURFIND, ylim=c(0,0.04), xlab="Cluster 3", ylab="[%]SURFIND")
+boxplot(cl_4$SURFIND, ylim=c(0,0.04), xlab="Cluster 4", ylab="[%]SURFIND")
+
+#Comparaison SURFHAB
+par(mfrow=c(1,4))
+boxplot(cl_1$SURFHAB, ylim=c(0,0.4), xlab="Cluster 1", ylab="[%]SURFHAB")
+boxplot(cl_2$SURFHAB, ylim=c(0,0.4), xlab="Cluster 2", ylab="[%]SURFHAB")
+boxplot(cl_3$SURFHAB, ylim=c(0,0.4), xlab="Cluster 3", ylab="[%]SURFHAB")
+boxplot(cl_4$SURFHAB, ylim=c(0,0.4), xlab="Cluster 4", ylab="[%]SURFHAB")
+
+#Comparaison EPT1
+par(mfrow=c(1,4))
+boxplot(cl_1$EPT1, ylim=c(0,0.55), xlab="Cluster 1", ylab="[%]EPT1")
+boxplot(cl_2$EPT1, ylim=c(0,0.55), xlab="Cluster 2", ylab="[%]EPT1")
+boxplot(cl_3$EPT1, ylim=c(0,0.55), xlab="Cluster 3", ylab="[%]EPT1")
+boxplot(cl_4$EPT1, ylim=c(0,0.55), xlab="Cluster 4", ylab="[%]EPT1")
+
+#Comparaison SAU
+par(mfrow=c(1,4))
+boxplot(cl_1$SAU, ylim=c(0,1), xlab="Cluster 1", ylab="[%]SAU")
+boxplot(cl_2$SAU, ylim=c(0,1), xlab="Cluster 2", ylab="[%]SAU")
+boxplot(cl_3$SAU, ylim=c(0,1), xlab="Cluster 3", ylab="[%]SAU")
+boxplot(cl_4$SAU, ylim=c(0,1), xlab="Cluster 4", ylab="[%]SAU")
+
+#Comparaison SAU
+par(mfrow=c(1,4))
+boxplot(cl_1$RESSEC, ylim=c(0,0.2), xlab="Cluster 1", ylab="[%]RESSEC")
+boxplot(cl_2$RESSEC, ylim=c(0,0.2), xlab="Cluster 2", ylab="[%]RESSEC")
+boxplot(cl_3$RESSEC, ylim=c(0,0.2), xlab="Cluster 3", ylab="[%]RESSEC")
+boxplot(cl_4$RESSEC, ylim=c(0,0.2), xlab="Cluster 4", ylab="[%]RESSEC")
+
+#Comparaison RETR
+par(mfrow=c(1,4))
+boxplot(cl_1$RETR, ylim=c(0,0.2), xlab="Cluster 1", ylab="[%]RETR")
+boxplot(cl_2$RETR, ylim=c(0,0.2), xlab="Cluster 2", ylab="[%]RETR")
+boxplot(cl_3$RETR, ylim=c(0,0.2), xlab="Cluster 3", ylab="[%]RETR")
+boxplot(cl_4$RETR, ylim=c(0,0.2), xlab="Cluster 4", ylab="[%]RETR")
+
+#Comparaison ADO
+par(mfrow=c(1,4))
+boxplot(cl_1$ADO, ylim=c(0,0.2), xlab="Cluster 1", ylab="[%]ADO")
+boxplot(cl_2$ADO, ylim=c(0,0.2), xlab="Cluster 2", ylab="[%]ADO")
+boxplot(cl_3$ADO, ylim=c(0,0.2), xlab="Cluster 3", ylab="[%]ADO")
+boxplot(cl_4$ADO, ylim=c(0,0.2), xlab="Cluster 4", ylab="[%]ADO")
+
+#Comparaison IP_270920
+par(mfrow=c(1,4))
+boxplot(cl_1$IP_270920, ylim=c(0,0.7), xlab="Cluster 1", ylab="[%]IP_270920")
+boxplot(cl_2$IP_270920, ylim=c(0,0.7), xlab="Cluster 2", ylab="[%]IP_270920")
+boxplot(cl_3$IP_270920, ylim=c(0,0.7), xlab="Cluster 3", ylab="[%]IP_270920")
+boxplot(cl_4$IP_270920, ylim=c(0,0.7), xlab="Cluster 4", ylab="[%]IP_270920")
+
+#Comparaison IP_250916
+par(mfrow=c(1,4))
+boxplot(cl_1$IP_250916, ylim=c(0,0.5), xlab="Cluster 1", ylab="[%]IP_250916")
+boxplot(cl_2$IP_250916, ylim=c(0,0.5), xlab="Cluster 2", ylab="[%]IP_250916")
+boxplot(cl_3$IP_250916, ylim=c(0,0.5), xlab="Cluster 3", ylab="[%]IP_250916")
+boxplot(cl_4$IP_250916, ylim=c(0,0.5), xlab="Cluster 4", ylab="[%]IP_250916")
+
+#Comparaison IP_291120
+par(mfrow=c(1,4))
+boxplot(cl_1$IP_291120, ylim=c(0,0.5), xlab="Cluster 1", ylab="[%]IP_291120")
+boxplot(cl_2$IP_291120, ylim=c(0,0.5), xlab="Cluster 2", ylab="[%]IP_291120")
+boxplot(cl_3$IP_291120, ylim=c(0,0.5), xlab="Cluster 3", ylab="[%]IP_291120")
+boxplot(cl_4$IP_291120, ylim=c(0,0.5), xlab="Cluster 4", ylab="[%]IP_291120")
+
+#Comparaison IP_130222
+par(mfrow=c(1,4))
+boxplot(cl_1$IP_130222, ylim=c(0,0.4), xlab="Cluster 1", ylab="[%]IP_130222")
+boxplot(cl_2$IP_130222, ylim=c(0,0.4), xlab="Cluster 2", ylab="[%]IP_130222")
+boxplot(cl_3$IP_130222, ylim=c(0,0.4), xlab="Cluster 3", ylab="[%]IP_130222")
+boxplot(cl_4$IP_130222, ylim=c(0,0.4), xlab="Cluster 4", ylab="[%]IP_130222")
+
+
+
+
+```
+
+
+Pour exporter ces données on utilise la fonction **write.csv()** (comme à la première étappe)
+```{r}
+write.csv(cah_partitions, file="clustering.csv")
+```
+
+
+
+

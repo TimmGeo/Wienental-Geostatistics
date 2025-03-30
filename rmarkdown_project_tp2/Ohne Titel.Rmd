@@ -1,0 +1,24 @@
+---
+title: "Untitled"
+author: "Timm Rogenmoser"
+date: "2023-04-14"
+output: html_document
+---
+
+```{r}
+install.packages("openair")
+
+library(openair)
+
+# Create wind data frame
+wind_data <- data.frame(speed = c(2, 3, 4, 5, 6), 
+                        direction = c(10, 20, 30, 40, 50))
+```
+
+
+```{r}
+
+# Create wind rose plot
+
+windRose(wind_data)
+
