@@ -1,3 +1,5 @@
+## Multilevel Spatial Analysis of the Wynental Region: A GIS-Integrated Study Using Multinomial Logistic Regression, PCA, and Hierarchical Clustering
+
 ### 1. Introduction 
 
 Dans le cadre du cours " Analyses spatiales et quantitatives en géographie " de l'Université de Lausanne, une étude du territoire de la région du Wynental est réalisée dans ce rapport. La région du Wynental, située au sud du canton d'Argovie, a été définie comme lieu d'étude. 
