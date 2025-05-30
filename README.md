@@ -8,7 +8,7 @@ Ce TP2 est la suite du premier travail pratique qui était terminé en Novembre 
 
 Le fil conducteur de ce travail est l'idée d'avoir été mandaté par la commune d'Unterkulm (chef-lieu du district de Kulm) en tant que collaborateur scientifique et géographe pour étudier la région du Wynental à différents niveaux
 
-![**Figure 1**: Région du Wynental](../figures_rmarkdown/figure1_wynental.png)
+![**Figure 1**: Région du Wynental](figures_rmarkdown/figure1_wynental.png)
 
 Plus concrètement, le TP2 porte sur les analyses suivantes: 
 
@@ -74,7 +74,7 @@ Afin de pouvoir mieux interpréter les résultats de la régression logistique m
 
 Création de la carte : Les données de la prévision exportées par le _notebook_technique_ ont été exportées sous forme de fichier .csv, traitées dans excel et finalement chargées dans le programme QGis. Un nouveau document Excel a ensuite été créé, dans lequel les données de la prévision ont été comparées à la typologie des communes établie par l'OFS. Ligne par ligne, on a vérifié où il y avait un écart entre les deux colonnes. **Enfin, l'erreur a été trouvée pour la commune de Holziken**. Il s'agit d'une commune d'agglomération qui a été prédite à tort comme rurale. Dans le programme graphique Adobe Illustrator, la commune a ainsi été colorée en rouge et la carte d'erreur finalisée, qui est affichée ci-dessous : 
 
-![**Figure 3:**Carte des erreurs](../figures_rmarkdown/figure3_carte_erreurs.png)
+![**Figure 3:**Carte des erreurs](figures_rmarkdown/figure3_carte_erreurs.png)
 Éléments de la carte : 
 
 - **Couleur** (pour la variable relative) pour les prévisions erronées 
@@ -151,7 +151,7 @@ Les variables 8-11 ont étaient choisis pour avoir une dimension politique dans 
 
 Comme expliqué initialement, l'ACP crée de nouvelles dimensions *p* qui expliquent chacune une certaine proportion de la variance. Ceci est montré visuellement avec ce PCA graph et ensuite, sous **[3.3.2 Contribution]** en forme d'un histogramme: 
 
-![**Figure 4:** PCA Graph](../figures_rmarkdown/figure4_PCA_graph.png)
+![**Figure 4:** PCA Graph](figures_rmarkdown/figure4_PCA_graph.png)
 
 ##### 3.3.2 Contribution 
 
@@ -165,20 +165,20 @@ Comme l'objectif de l'ACP est de simplifier les données et de "généraliser de
 
 - Enfin, le **critère de Cattell**: _Détermine le nombre de facteurs en observant un screePlot, en identifiant le point d'inflexion du graphique_ ; Dans ce cas, pour améliorer l'ACP, nous devrions supprimer les indicateurs qui sont plus indépendants et en ajouter d'autres qui sont mieux corrélés avec d'autres indicateurs afin d'obtenir des facteurs qui expliquent mieux les autres indicateurs. 
 
-![**Figure 5:** Contribution](../figures_rmarkdown/figure5_contribution.png)
+![**Figure 5:** Contribution](figures_rmarkdown/figure5_contribution.png)
 Le tableau qui permis facilement de trouver les infos sur la variance expliqué des différents dimensions: 
-![**Figure 6:** Données numériques](../figures_rmarkdown/figure6_donnees_contri.png)
+![**Figure 6:** Données numériques](figures_rmarkdown/figure6_donnees_contri.png)
 ##### 3.3.3 Communalités 
 La communalité d'une variable indique quelle part de la variance de cette variable peut être représentée par l'ensemble des facteurs (Studyflix, 2021). 
 
-![**Figure 7:** Communalités](../figures_rmarkdown/figure7_communalites.png)
+![**Figure 7:** Communalités](figures_rmarkdown/figure7_communalites.png)
 
 ##### 3.3.4 Contribution 1ère dimension
 En complément du graphique ci-dessus, le graphique suivant présente un histogramme qui permet de visualiser la contribution/le poids de chaque variable à la première dimension. **On peut constater que SURFIND (surface industrielle et commerciale) contribue le plus à la première dimension, respectivement RESSEC le moins...** La proportion de la surface des bâtiments et des emplois du premier secteur économique contribuent également de manière considérable à la première dimension. 
 
 N.B: Un graphique de contribution pour chaque dimension a été fait (voir notebook technique) ce qui permet d'afficher la contribution de chacune des variables à la dimension en particulier.  
 
-![**Figure 8:** Contribution 1dim](../figures_rmarkdown/figure8_contri_1dim.png)
+![**Figure 8:** Contribution 1dim](figures_rmarkdown/figure8_contri_1dim.png)
 
 
 ##### 3.3.5 Carte de l'ACP
@@ -190,7 +190,7 @@ Création de la carte : Les données exportées par le _notebook_technique_ ont 
 Enfin, la carte indique pour chaque commune le score factoriel obtenu. En d'autres termes, elle montre la contribution de chaque commune à la première dimension. Comme je n'ai réalisé qu'une seule carte et non une carte par dimension, j'ai choisi de prendre la première dimension de l'ACP. 
 
 
-![**Figure 9:** Carte de l'ACP](../figures_rmarkdown/figure9_CARTE_acp.png)
+![**Figure 9:** Carte de l'ACP](figures_rmarkdown/figure9_CARTE_acp.png)
 Éléments de la carte : 
 
 - **Couleur** (pour la variable relative) pour le pourcentage d'urbanisation
@@ -242,14 +242,14 @@ Comme l'ACP de la deuxième étape est suivi de l'ACH de la troisième étape, l
 
 Le dendogramme généré est présenté ci-dessous. Le dendogramme contient 25 points de départ (partie inférieure du dendogramme) qui représentent les communes. Visuellement, à l'œil nu, il est possible d'identifier 4 groupes principaux de communes les plus similaires. En augmenant la distance, ils se réduisent à 2 grands groupes. 
 
-![**Figure 10:**Dendogramme](../figures_rmarkdown/figure10_dendogramme.png)
+![**Figure 10:**Dendogramme](figures_rmarkdown/figure10_dendogramme.png)
 
 ##### 4.3.2 Boxplots 
 
 Pour chaque variable, des boxplots ont été réalisés afin d'étudier les différences et similarités entre les clusters. Cela facilitera grandement l'analyse dans le chapitre **[4.4 Résultats]**.
 
 Voici les Boxplots qui ont étaient crées pour chaque variable en fonction des clusters: 
-![**Figure 11:**Boxplots](../figures_rmarkdown/figure12.png)
+![**Figure 11:**Boxplots](figures_rmarkdown/figure12.png)
 
 
 ##### 4.3.3 Carte des clusters 
@@ -258,7 +258,7 @@ Egalement, afin de pouvoir mieux interpréter les résultats de la CAH par la su
 
 Création de la carte : Les données exportées par le _notebook_technique_ ont été exportées sous forme de fichier .csv, traitées dans excel et ont ainsi pu être chargées dans le programme QGis. Un lien a ensuite été créé entre les communes (shape-file de Swisstopo, 2021) et le tableau Excel. Il a été possible de vérifier si cette liaison était réussie dans le tableau d'attribution des communes, où le numéro de classe devait être listé dans la dernière colonne. Après vérification, il est possible de sélectionner sous "Symbology" la graduation dans la classification des pourcentages dans Jenks, après quoi les communes sont réparties en quatre couleurs différentes représentant les différentes classes.
 
-![**Figure 12:**Carte des clusters](../figures_rmarkdown/figure11_CARTE_cah.png)
+![**Figure 12:**Carte des clusters](figures_rmarkdown/figure11_CARTE_cah.png)
 Éléments de la carte : 
 
 - **Couleur** (pour la variable nominale) pour les différentes classes 
