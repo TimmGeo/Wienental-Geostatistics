@@ -8,8 +8,6 @@ Ce TP2 est la suite du premier travail pratique qui était terminé en Novembre 
 
 Le fil conducteur de ce travail est l'idée d'avoir été mandaté par la commune d'Unterkulm (chef-lieu du district de Kulm) en tant que collaborateur scientifique et géographe pour étudier la région du Wynental à différents niveaux
 
-![**Figure 1**: Région du Wynental](figures_rmarkdown/figure1_wynental.png)
-
 Plus concrètement, le TP2 porte sur les analyses suivantes: 
 
 - une **[2. Régression logistique multinomiale]**
