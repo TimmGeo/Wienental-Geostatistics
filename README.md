@@ -66,7 +66,7 @@ Sur la base de cette théorie, on peut conclure qu'une valeur s'écarte de cette
 
 **Nota Bene:** Comme il a déjà été mentionné dans le _notebook_technique_ parallèle, une variable explicative (RESSEC) a été délibérément supprimée afin de pouvoir forcer une erreur dans la matrice de confusion pour représenter au moins une erreur dans la carte des erreurs. 
 
-![**Figure 2:** Matrice de confusion](../figures_rmarkdown/figure2_matrice.png)
+![**Figure 2:** Matrice de confusion](figures_rmarkdown/figure2_matrice.png)
 
 ##### 2.4.2 Carte des erreurs 
 
